@@ -29,6 +29,8 @@ NASA_API_KEY=your_key npm start
 
 무료 API 키는 [NASA Open APIs](https://api.nasa.gov/)에서 발급할 수 있습니다.
 
+앱 상단의 **API 키 설정** 버튼에서도 발급받은 키를 입력할 수 있습니다. 입력한 키는 현재 브라우저 탭의 `sessionStorage`에만 보관되고, API 요청 시 서버를 거쳐 NASA에 전달됩니다. 키 없이 사용하면 `DEMO_KEY`가 적용됩니다.
+
 ## 테스트
 
 ```bash

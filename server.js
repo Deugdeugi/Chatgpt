@@ -18,16 +18,22 @@ function validDate(value) {
   return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
 }
 
-async function getApod(date, fetchImpl = fetch) {
+async function getApod(date, fetchImpl = fetch, apiKey = process.env.NASA_API_KEY || 'DEMO_KEY') {
   const key = date || 'today';
   if (cache.has(key)) return cache.get(key);
   const url = new URL(NASA_ENDPOINT);
-  url.searchParams.set('api_key', process.env.NASA_API_KEY || 'DEMO_KEY');
+  url.searchParams.set('api_key', apiKey);
   if (date) url.searchParams.set('date', date);
   url.searchParams.set('thumbs', 'true');
 
   const response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
-  const data = await response.json();
+  const body = await response.text();
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error('NASA API가 일시적으로 올바르지 않은 응답을 보냈습니다. 잠시 후 다시 시도해 주세요.');
+  }
   if (!response.ok) throw new Error(data.msg || data.error?.message || 'NASA 데이터를 불러오지 못했습니다.');
   cache.set(key, data);
   return data;
@@ -50,11 +56,15 @@ function createServer() {
       const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
       if (url.pathname === '/api/apod') {
         const date = url.searchParams.get('date');
+        const apiKey = req.headers['x-nasa-api-key'] || process.env.NASA_API_KEY || 'DEMO_KEY';
+        if (typeof apiKey !== 'string' || apiKey.length > 128 || !/^[A-Za-z0-9_-]+$/.test(apiKey)) {
+          return json(res, 400, { error: '올바른 NASA API 키를 입력해 주세요.' });
+        }
         if (date && (!validDate(date) || date < '1995-06-16' || date > new Date().toISOString().slice(0, 10))) {
           return json(res, 400, { error: '1995년 6월 16일부터 오늘 사이의 날짜를 선택해 주세요.' });
         }
         try {
-          return json(res, 200, await getApod(date));
+          return json(res, 200, await getApod(date, fetch, apiKey));
         } catch (error) {
           return json(res, 502, { error: error.message });
         }

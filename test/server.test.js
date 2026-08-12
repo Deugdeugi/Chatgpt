@@ -13,13 +13,27 @@ test('getApod는 NASA 요청을 구성하고 결과를 캐시한다', async () =
   let calls = 0;
   const fakeFetch = async (url) => {
     calls++;
+    assert.equal(url.searchParams.get('api_key'), 'user-key_123');
     assert.equal(url.searchParams.get('date'), '2024-01-01');
     assert.equal(url.searchParams.get('thumbs'), 'true');
-    return { ok: true, json: async () => ({ date: '2024-01-01', title: 'Earth' }) };
+    return { ok: true, text: async () => JSON.stringify({ date: '2024-01-01', title: 'Earth' }) };
   };
-  const first = await getApod('2024-01-01', fakeFetch);
-  const second = await getApod('2024-01-01', fakeFetch);
+  const first = await getApod('2024-01-01', fakeFetch, 'user-key_123');
+  const second = await getApod('2024-01-01', fakeFetch, 'user-key_123');
   assert.equal(first.title, 'Earth');
   assert.deepEqual(second, first);
   assert.equal(calls, 1);
+});
+
+test('getApod는 NASA의 비 JSON 응답을 사용자 친화적인 오류로 변환한다', async () => {
+  cache.clear();
+  const fakeFetch = async () => ({
+    ok: false,
+    text: async () => 'upstream connect error',
+  });
+
+  await assert.rejects(
+    getApod('2024-01-02', fakeFetch, 'user-key_123'),
+    /NASA API가 일시적으로 올바르지 않은 응답을 보냈습니다/,
+  );
 });

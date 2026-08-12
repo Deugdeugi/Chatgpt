@@ -5,6 +5,7 @@ const card = $('#apod-card');
 const savedView = $('#saved-view');
 let current;
 let saved = JSON.parse(localStorage.getItem('orbit-saved') || '[]');
+let apiKey = sessionStorage.getItem('nasa-api-key') || '';
 
 const today = new Date().toISOString().slice(0, 10);
 datePicker.max = today;
@@ -27,9 +28,17 @@ async function loadApod(date = '') {
   status.innerHTML = '<div class="loader"></div><p>별빛을 불러오는 중...</p>';
   card.classList.add('hidden');
   try {
-    const response = await fetch(`/api/apod${date ? `?date=${date}` : ''}`);
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error);
+    const response = await fetch(`/api/apod${date ? `?date=${date}` : ''}`, {
+      headers: apiKey ? { 'X-NASA-API-Key': apiKey } : {},
+    });
+    const body = await response.text();
+    let data;
+    try {
+      data = JSON.parse(body);
+    } catch {
+      throw new Error('서버가 일시적으로 올바르지 않은 응답을 보냈습니다.');
+    }
+    if (!response.ok) throw new Error(data.error || 'NASA 데이터를 불러오지 못했습니다.');
     current = data;
     datePicker.value = data.date;
     $('#apod-title').textContent = data.title;
@@ -48,7 +57,13 @@ async function loadApod(date = '') {
     status.classList.add('hidden'); card.classList.remove('hidden');
     updateSaved();
   } catch (error) {
-    status.innerHTML = `<p>✦<br><br>${error.message}<br><small>잠시 후 다시 시도해 주세요.</small></p>`;
+    status.replaceChildren();
+    const message = document.createElement('p');
+    message.append('✦', document.createElement('br'), document.createElement('br'), error.message, document.createElement('br'));
+    const hint = document.createElement('small');
+    hint.textContent = 'API 키와 네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
+    message.append(hint);
+    status.append(message);
   }
 }
 function shiftDate(days) {
@@ -91,5 +106,47 @@ $('#save-button').addEventListener('click', () => {
 $('#expand-button').addEventListener('click', () => window.open(current.hdurl || current.url, '_blank', 'noopener'));
 document.querySelectorAll('.nav-button').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
 
+const keyDialog = $('#api-key-dialog');
+const keyInput = $('#api-key-input');
+function updateKeyStatus() {
+  $('.key-status').classList.toggle('connected', Boolean(apiKey));
+  $('#api-key-button').lastChild.textContent = apiKey ? ' API 키 연결됨' : ' API 키 설정';
+}
+function openKeyDialog() {
+  keyInput.value = apiKey;
+  $('#key-message').textContent = '';
+  keyDialog.showModal();
+  keyInput.focus();
+}
+$('#api-key-button').addEventListener('click', openKeyDialog);
+$('#close-key-dialog').addEventListener('click', () => keyDialog.close());
+keyDialog.addEventListener('click', (event) => { if (event.target === keyDialog) keyDialog.close(); });
+$('#toggle-key').addEventListener('click', () => {
+  const showing = keyInput.type === 'text';
+  keyInput.type = showing ? 'password' : 'text';
+  $('#toggle-key').textContent = showing ? '보기' : '숨기기';
+});
+$('#api-key-form').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const value = keyInput.value.trim();
+  if (!/^[A-Za-z0-9_-]+$/.test(value)) {
+    $('#key-message').textContent = '올바른 API 키를 입력해 주세요.';
+    return;
+  }
+  apiKey = value;
+  sessionStorage.setItem('nasa-api-key', apiKey);
+  updateKeyStatus();
+  keyDialog.close();
+  loadApod(datePicker.value);
+});
+$('#use-demo-key').addEventListener('click', () => {
+  apiKey = '';
+  sessionStorage.removeItem('nasa-api-key');
+  updateKeyStatus();
+  keyDialog.close();
+  loadApod(datePicker.value);
+});
+
 updateSaved();
+updateKeyStatus();
 loadApod();
