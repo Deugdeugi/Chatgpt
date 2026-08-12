@@ -31,14 +31,8 @@ async function loadApod(date = '') {
     const response = await fetch(`/api/apod${date ? `?date=${date}` : ''}`, {
       headers: apiKey ? { 'X-NASA-API-Key': apiKey } : {},
     });
-    const body = await response.text();
-    let data;
-    try {
-      data = JSON.parse(body);
-    } catch {
-      throw new Error('서버가 일시적으로 올바르지 않은 응답을 보냈습니다.');
-    }
-    if (!response.ok) throw new Error(data.error || 'NASA 데이터를 불러오지 못했습니다.');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error);
     current = data;
     datePicker.value = data.date;
     $('#apod-title').textContent = data.title;
@@ -57,13 +51,7 @@ async function loadApod(date = '') {
     status.classList.add('hidden'); card.classList.remove('hidden');
     updateSaved();
   } catch (error) {
-    status.replaceChildren();
-    const message = document.createElement('p');
-    message.append('✦', document.createElement('br'), document.createElement('br'), error.message, document.createElement('br'));
-    const hint = document.createElement('small');
-    hint.textContent = 'API 키와 네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
-    message.append(hint);
-    status.append(message);
+    status.innerHTML = `<p>✦<br><br>${error.message}<br><small>API 키를 확인한 뒤 다시 시도해 주세요.</small></p>`;
   }
 }
 function shiftDate(days) {
