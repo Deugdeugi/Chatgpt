@@ -8,6 +8,8 @@ let saved = JSON.parse(localStorage.getItem('orbit-saved') || '[]');
 let apiKey = sessionStorage.getItem('nasa-api-key') || '';
 let apodRequestController;
 let apodRequestId = 0;
+let translationController;
+let descriptionLanguage = 'en';
 
 const today = new Date().toISOString().slice(0, 10);
 datePicker.max = today;
@@ -26,6 +28,8 @@ function updateSaved() {
   }
 }
 async function loadApod(date = '') {
+  translationController?.abort();
+  translationController = undefined;
   apodRequestController?.abort();
   apodRequestController = new AbortController();
   const requestController = apodRequestController;
@@ -48,6 +52,9 @@ async function loadApod(date = '') {
     if (!response.ok) throw new Error(data.error || 'NASA 데이터를 불러오지 못했습니다.');
     if (requestId !== apodRequestId) return;
     current = data;
+    current.translatedExplanation = '';
+    descriptionLanguage = 'en';
+    updateLanguageToggle();
     datePicker.value = data.date;
     $('#apod-title').textContent = data.title;
     $('#apod-description').textContent = data.explanation;
@@ -73,6 +80,56 @@ async function loadApod(date = '') {
     hint.textContent = 'API 키와 네트워크 연결을 확인한 뒤 다시 시도해 주세요.';
     message.append(hint);
     status.append(message);
+  }
+}
+function updateLanguageToggle() {
+  document.querySelectorAll('.language-toggle button').forEach((button) => {
+    button.classList.toggle('active', button.dataset.language === descriptionLanguage);
+    button.disabled = button.dataset.language === 'ko' && Boolean(translationController);
+  });
+}
+async function setDescriptionLanguage(language) {
+  if (!current || (language === descriptionLanguage && !translationController)) return;
+  if (language === 'en') {
+    translationController?.abort();
+    translationController = undefined;
+    descriptionLanguage = 'en';
+    $('#apod-description').textContent = current.explanation;
+    updateLanguageToggle();
+    return;
+  }
+  if (current.translatedExplanation) {
+    descriptionLanguage = 'ko';
+    $('#apod-description').textContent = current.translatedExplanation;
+    updateLanguageToggle();
+    return;
+  }
+  translationController?.abort();
+  translationController = new AbortController();
+  const controller = translationController;
+  $('#apod-description').textContent = '설명을 번역하는 중...';
+  updateLanguageToggle();
+  try {
+    const response = await fetch('/api/translate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text: current.explanation }),
+      signal: controller.signal,
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || '설명을 번역하지 못했습니다.');
+    if (controller !== translationController) return;
+    current.translatedExplanation = data.translatedText;
+    descriptionLanguage = 'ko';
+    $('#apod-description').textContent = data.translatedText;
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      $('#apod-description').textContent = current.explanation;
+      alert(error.message);
+    }
+  } finally {
+    if (controller === translationController) translationController = undefined;
+    updateLanguageToggle();
   }
 }
 function shiftDate(days) {
@@ -114,6 +171,7 @@ $('#save-button').addEventListener('click', () => {
 });
 $('#expand-button').addEventListener('click', () => window.open(current.hdurl || current.url, '_blank', 'noopener'));
 document.querySelectorAll('.nav-button').forEach((button) => button.addEventListener('click', () => showView(button.dataset.view)));
+document.querySelectorAll('.language-toggle button').forEach((button) => button.addEventListener('click', () => setDescriptionLanguage(button.dataset.language)));
 
 const keyDialog = $('#api-key-dialog');
 const keyInput = $('#api-key-input');

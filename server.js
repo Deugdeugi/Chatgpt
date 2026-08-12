@@ -5,7 +5,9 @@ const path = require('node:path');
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const NASA_ENDPOINT = 'https://api.nasa.gov/planetary/apod';
+const TRANSLATE_ENDPOINT = 'https://api.mymemory.translated.net/get';
 const cache = new Map();
+const translationCache = new Map();
 
 function json(res, status, body) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
@@ -37,6 +39,38 @@ async function getApod(date, fetchImpl = fetch, apiKey = process.env.NASA_API_KE
   if (!response.ok) throw new Error(data.msg || data.error?.message || 'NASA 데이터를 불러오지 못했습니다.');
   cache.set(key, data);
   return data;
+}
+
+async function translateToKorean(text, fetchImpl = fetch, signal) {
+  if (translationCache.has(text)) return translationCache.get(text);
+  const chunks = text.match(/.{1,450}(?:\s|$)/gs) || [text];
+  const translatedChunks = [];
+  for (const chunk of chunks) {
+    const url = new URL(TRANSLATE_ENDPOINT);
+    url.searchParams.set('q', chunk.trim());
+    url.searchParams.set('langpair', 'en|ko');
+    const response = await fetchImpl(url, { headers: { Accept: 'application/json' }, signal });
+    const body = await response.text();
+    let data;
+    try { data = JSON.parse(body); } catch { throw new Error('번역 서비스가 올바르지 않은 응답을 보냈습니다.'); }
+    const translatedChunk = data.responseData?.translatedText;
+    if (!response.ok || !translatedChunk) throw new Error(data.responseDetails || '설명을 번역하지 못했습니다.');
+    translatedChunks.push(translatedChunk);
+  }
+  const translatedText = translatedChunks.join(' ');
+  translationCache.set(text, translatedText);
+  return translatedText;
+}
+
+async function readJson(req) {
+  const chunks = [];
+  let size = 0;
+  for await (const chunk of req) {
+    size += chunk.length;
+    if (size > 12_000) throw new Error('요청 내용이 너무 깁니다.');
+    chunks.push(chunk);
+  }
+  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new Error('올바른 JSON 요청을 보내 주세요.'); }
 }
 
 async function serveStatic(pathname, res) {
@@ -74,6 +108,18 @@ function createServer() {
           return json(res, 502, { error: error.message });
         }
       }
+      if (url.pathname === '/api/translate' && req.method === 'POST') {
+        const controller = new AbortController();
+        res.once('close', () => { if (!res.writableEnded) controller.abort(); });
+        try {
+          const { text } = await readJson(req);
+          if (typeof text !== 'string' || !text.trim() || text.length > 8_000) return json(res, 400, { error: '번역할 설명을 확인해 주세요.' });
+          return json(res, 200, { translatedText: await translateToKorean(text, fetch, controller.signal) });
+        } catch (error) {
+          if (controller.signal.aborted) return;
+          return json(res, 502, { error: error.message });
+        }
+      }
       if (await serveStatic(url.pathname, res)) return;
       json(res, 404, { error: '페이지를 찾을 수 없습니다.' });
     } catch (error) {
@@ -83,4 +129,4 @@ function createServer() {
 }
 
 if (require.main === module) createServer().listen(PORT, () => console.log(`Orbit Daily: http://localhost:${PORT}`));
-module.exports = { createServer, getApod, validDate, cache };
+module.exports = { createServer, getApod, translateToKorean, validDate, cache, translationCache };

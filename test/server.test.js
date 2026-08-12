@@ -1,11 +1,25 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validDate, getApod, cache } = require('../server');
+const { validDate, getApod, translateToKorean, cache, translationCache } = require('../server');
 
 test('validDate는 실제 ISO 날짜만 허용한다', () => {
   assert.equal(validDate('2026-08-12'), true);
   assert.equal(validDate('2026-02-30'), false);
   assert.equal(validDate('12-08-2026'), false);
+});
+
+test('translateToKorean은 영문 설명을 한국어로 번역하고 캐시한다', async () => {
+  translationCache.clear();
+  let calls = 0;
+  const fakeFetch = async (url) => {
+    calls++;
+    assert.equal(url.searchParams.get('q'), 'A bright galaxy.');
+    assert.equal(url.searchParams.get('langpair'), 'en|ko');
+    return { ok: true, text: async () => JSON.stringify({ responseData: { translatedText: '밝은 은하.' } }) };
+  };
+  assert.equal(await translateToKorean('A bright galaxy.', fakeFetch), '밝은 은하.');
+  assert.equal(await translateToKorean('A bright galaxy.', fakeFetch), '밝은 은하.');
+  assert.equal(calls, 1);
 });
 
 test('getApod는 NASA 요청을 구성하고 결과를 캐시한다', async () => {
