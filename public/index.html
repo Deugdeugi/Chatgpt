@@ -15,7 +15,7 @@
   <header class="topbar">
     <a class="brand" href="/" aria-label="Orbit Daily 홈"><span class="orbit-logo"><i></i></span><span>ORBIT <b>DAILY</b></span></a>
     <nav><button class="nav-button active" data-view="discover">오늘의 우주</button><button class="nav-button" data-view="saved">나의 컬렉션 <span id="saved-count">0</span></button></nav>
-    <a class="nasa-link" href="https://apod.nasa.gov/" target="_blank" rel="noreferrer">NASA APOD <span>↗</span></a>
+    <button id="api-key-button" class="api-key-button" type="button"><span class="key-status"></span> API 키 설정</button>
   </header>
 
   <main>
@@ -57,6 +57,19 @@
   </main>
 
   <footer><span>ORBIT DAILY</span><p>NASA Open API로 지구에 전해진 우주의 순간들</p><p>Data provided by <a href="https://api.nasa.gov/" target="_blank" rel="noreferrer">NASA APOD ↗</a></p></footer>
+  <dialog id="api-key-dialog" class="key-dialog">
+    <form id="api-key-form">
+      <button id="close-key-dialog" class="dialog-close" type="button" aria-label="닫기">×</button>
+      <p class="eyebrow"><span></span> NASA OPEN API</p>
+      <h2>나만의 API 키 연결</h2>
+      <p class="dialog-copy">NASA에서 무료 키를 발급받아 입력하세요. 키는 이 브라우저 탭에만 보관되며 서버나 코드 파일에는 저장되지 않습니다.</p>
+      <label for="api-key-input">NASA API 키</label>
+      <div class="key-input-wrap"><input id="api-key-input" name="apiKey" type="password" autocomplete="off" spellcheck="false" placeholder="API 키를 붙여넣어 주세요"><button id="toggle-key" type="button" aria-label="API 키 표시">보기</button></div>
+      <p id="key-message" class="key-message" aria-live="polite"></p>
+      <div class="dialog-actions"><a href="https://api.nasa.gov/" target="_blank" rel="noreferrer">무료 키 발급받기 ↗</a><button class="primary" type="submit">키 저장하고 불러오기</button></div>
+      <button id="use-demo-key" class="demo-key" type="button">DEMO_KEY로 계속하기</button>
+    </form>
+  </dialog>
   <script src="/app.js" defer></script>
 </body>
 </html>
