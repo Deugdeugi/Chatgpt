@@ -27,7 +27,13 @@ async function getApod(date, fetchImpl = fetch, apiKey = process.env.NASA_API_KE
   url.searchParams.set('thumbs', 'true');
 
   const response = await fetchImpl(url, { headers: { Accept: 'application/json' } });
-  const data = await response.json();
+  const body = await response.text();
+  let data;
+  try {
+    data = JSON.parse(body);
+  } catch {
+    throw new Error('NASA API가 일시적으로 올바르지 않은 응답을 보냈습니다. 잠시 후 다시 시도해 주세요.');
+  }
   if (!response.ok) throw new Error(data.msg || data.error?.message || 'NASA 데이터를 불러오지 못했습니다.');
   cache.set(key, data);
   return data;
