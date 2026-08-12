@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="NASA가 고른 오늘의 천문 사진을 날짜별로 감상하세요.">
+  <title>Orbit Daily — 오늘의 천문 사진</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="ambient one"></div><div class="ambient two"></div>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Orbit Daily 홈"><span class="orbit-logo"><i></i></span><span>ORBIT <b>DAILY</b></span></a>
+    <nav><button class="nav-button active" data-view="discover">오늘의 우주</button><button class="nav-button" data-view="saved">나의 컬렉션 <span id="saved-count">0</span></button></nav>
+    <a class="nasa-link" href="https://apod.nasa.gov/" target="_blank" rel="noreferrer">NASA APOD <span>↗</span></a>
+  </header>
+
+  <main>
+    <section class="intro">
+      <p class="eyebrow"><span></span> A WINDOW INTO THE UNIVERSE</p>
+      <h1>매일, 우주를<br><em>한 장 가까이.</em></h1>
+      <p class="lead">NASA가 선정한 오늘의 천문 사진과 그 안에 담긴 이야기를 만나보세요.</p>
+      <div class="date-control">
+        <button id="prev-day" aria-label="이전 날짜">←</button>
+        <label><span>탐험할 날짜</span><input id="date-picker" type="date" min="1995-06-16"></label>
+        <button id="next-day" aria-label="다음 날짜">→</button>
+        <button id="random-day" class="random">✦ <span>랜덤 탐험</span></button>
+      </div>
+    </section>
+
+    <section id="status" class="status" aria-live="polite"><div class="loader"></div><p>별빛을 불러오는 중...</p></section>
+
+    <article id="apod-card" class="apod-card hidden">
+      <div class="media-wrap">
+        <img id="apod-image" alt="">
+        <iframe id="apod-video" class="hidden" title="오늘의 천문 영상" allowfullscreen></iframe>
+        <div class="media-top"><span class="pill">NASA · APOD</span><button id="save-button" class="save-button" aria-label="컬렉션에 저장">♡</button></div>
+        <div class="media-bottom"><span id="media-date"></span><button id="expand-button">전체 화면 ↗</button></div>
+      </div>
+      <div class="story">
+        <p class="story-label">TODAY'S COSMIC STORY</p>
+        <h2 id="apod-title"></h2>
+        <div class="rule"></div>
+        <p id="apod-description"></p>
+        <div class="story-meta"><span id="copyright"></span><a id="original-link" target="_blank" rel="noreferrer">원본 해상도로 보기 <b>↗</b></a></div>
+      </div>
+    </article>
+
+    <section id="saved-view" class="saved-view hidden">
+      <div class="section-heading"><div><p class="eyebrow"><span></span> YOUR COSMIC ARCHIVE</p><h2>나의 우주 컬렉션</h2></div><p>마음에 든 우주의 순간을 이곳에 모아보세요.</p></div>
+      <div id="saved-grid" class="saved-grid"></div>
+      <div id="empty-saved" class="empty hidden"><span>✦</span><h3>아직 저장한 우주가 없어요</h3><p>하트 버튼을 눌러 마음에 드는 사진을 간직해 보세요.</p></div>
+    </section>
+  </main>
+
+  <footer><span>ORBIT DAILY</span><p>NASA Open API로 지구에 전해진 우주의 순간들</p><p>Data provided by <a href="https://api.nasa.gov/" target="_blank" rel="noreferrer">NASA APOD ↗</a></p></footer>
+  <script src="/app.js" defer></script>
+</body>
+</html>
